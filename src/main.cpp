@@ -1,3 +1,4 @@
+#include <boost/filesystem.hpp>
 #include <iostream>
 #include <unistd.h>
 
@@ -7,6 +8,9 @@
 
 int main(int argc, char **argv) {
   CLI::App app{"capp-run"};
+
+  std::string app_name(boost::filesystem::current_path().filename().string());
+  app.add_option("-n,--name", app_name, "Compose application name", true);
 
   std::string app_dir("./");
   app.add_option("-d,--app-dir", app_dir, "Compose application directory",
@@ -25,9 +29,9 @@ int main(int argc, char **argv) {
 
   try {
     if (create) {
-      oci_createRuntime();
+      oci_createRuntime(app_name);
     } else if (teardown) {
-      oci_poststop();
+      oci_poststop(app_name);
     }
   } catch (const std::exception &ex) {
     std::cerr << ex.what();

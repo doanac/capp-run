@@ -1,4 +1,6 @@
 #pragma once
 
-void oci_createRuntime();
-void oci_poststop();
+#include <string>
+
+void oci_createRuntime(const std::string &app_name);
+void oci_poststop(const std::string &app_name);

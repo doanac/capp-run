@@ -9,13 +9,15 @@ project(capp-run)
 add_definitions('-g')
 add_definitions('-Wall')
 
+set(Boost_USE_STATIC_LIBS ON)
+find_package(Boost COMPONENTS filesystem REQUIRED)
 find_package(PkgConfig REQUIRED)
 
 set(CMAKE_CXX_STANDARD 14)
 
-add_executable(capp-run src/main.cpp src/oci-hooks.cpp src/project.cpp)
+add_executable(capp-run src/main.cpp src/context.cpp src/oci-hooks.cpp src/project.cpp)
 target_include_directories(capp-run PRIVATE ${CMAKE_SOURCE_DIR}/third-party ${CMAKE_SOURCE_DIR}/third-party/yaml-cpp/include)
-target_link_libraries(capp-run -lpthread yaml-cpp)
+target_link_libraries(capp-run -lpthread ${Boost_LIBRARIES} yaml-cpp)
 
 install(TARGETS capp-run RUNTIME DESTINATION bin)
 
