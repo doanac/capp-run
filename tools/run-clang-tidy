@@ -9,6 +9,6 @@ cd $1
 failed=0
 for x in `ls *.cpp` ; do
 	echo "== Checking $x"
-	clang-tidy-10 $x -- -I../third-party || failed=1
+	clang-tidy-10 $x -- -I../third-party -I../third-party/yaml-cpp/include || failed=1
 done
 exit $failed
