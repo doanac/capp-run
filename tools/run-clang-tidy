@@ -1,0 +1,14 @@
+#!/bin/sh -e
+
+if [ $# -ne 1 ] ; then
+	echo "Usage: $* <src dir>"
+	exit 1
+fi
+
+cd $1
+failed=0
+for x in `ls *.cpp` ; do
+	echo "== Checking $x"
+	clang-tidy-10 main.cpp -- -DGIT_COMMIT='"deadbeef"' || failed=1
+done
+exit $failed

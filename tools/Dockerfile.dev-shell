@@ -1,0 +1,31 @@
+FROM ubuntu:20.04
+
+ENV DEBIAN_FRONTEND noninteractive
+ENV CCACHE_DIR /tmp/ccache
+
+RUN apt-get update && apt-get -y install --no-install-suggests --no-install-recommends \
+  autoconf \
+  automake \
+  ccache \
+  clang-format \
+  clang-tidy \
+  cmake \
+  curl \
+  g++ \
+  git \
+  libboost-dev \
+  libboost-log-dev \
+  libboost-program-options-dev \
+  libboost-system-dev \
+  libboost-test-dev \
+  libboost-thread-dev \
+  make \
+  ninja-build \
+  pkg-config \
+  strace \
+  valgrind
+
+RUN useradd testuser
+RUN mkdir /tmp/ccache
+
+WORKDIR /

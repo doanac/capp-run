@@ -1,0 +1,4 @@
+build/
+.idea/
+CMakeLists.txt.user
+tmp.*
