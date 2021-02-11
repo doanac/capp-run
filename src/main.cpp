@@ -4,6 +4,7 @@
 
 #include "CLI11.hpp"
 
+#include "capp.h"
 #include "oci-hooks.h"
 
 int main(int argc, char **argv) {
@@ -16,6 +17,9 @@ int main(int argc, char **argv) {
   app.add_option("-d,--app-dir", app_dir, "Compose application directory",
                  true);
 
+  auto &up = *app.add_subcommand("up", "Start a compose service");
+  std::string svc;
+  up.add_option("service", svc, "Compose service")->required();
   auto &create = *app.add_subcommand("createRuntime", "OCI createRuntime hook");
   auto &teardown = *app.add_subcommand("poststop", "OCI poststop hook");
 
@@ -28,13 +32,15 @@ int main(int argc, char **argv) {
   }
 
   try {
-    if (create) {
+    if (up) {
+      capp_up(app_name, svc);
+    } else if (create) {
       oci_createRuntime(app_name);
     } else if (teardown) {
       oci_poststop(app_name);
     }
   } catch (const std::exception &ex) {
-    std::cerr << ex.what();
+    std::cerr << ex.what() << "\n";
     return EXIT_FAILURE;
   }
 

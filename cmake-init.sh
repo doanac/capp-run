@@ -9,7 +9,7 @@ if [ "$HERE" = "$(pwd)" ] ; then
 	exit 1
 fi
 
-CMAKE_DEF_ARGS="-GNinja"
+CMAKE_DEF_ARGS="-GNinja -DDOCKER_ARCH=amd64"
 CMAKE_ARGS="${CMAKE_DEF_ARGS} $@"
 echo "Building capp-run with the following arguments: ${CMAKE_ARGS}"
 cmake ${CMAKE_ARGS} $HERE
