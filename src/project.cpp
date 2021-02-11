@@ -20,7 +20,10 @@ ProjectDefinition ProjectDefinition::Load(const std::string &path) {
   auto services = node["services"];
   for (YAML::const_iterator it = services.begin(); it != services.end(); ++it) {
     Service svc(it->first.as<std::string>());
-    svc.networks = it->second["networks"].as<std::vector<std::string>>();
+    auto node = it->second["networks"];
+    if (node.IsDefined()) {
+      svc.networks = node.as<std::vector<std::string>>();
+    }
     def.services.push_back(svc);
   }
   return def;
