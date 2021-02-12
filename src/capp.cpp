@@ -21,8 +21,27 @@ static void up(const Context &ctx, const Service &svc) {
   boost::filesystem::create_directories(dst.parent_path());
   boost::filesystem::copy_file(spec, dst);
 
-  // TODO create overlay mount
+  auto path = ctx.var_lib / "mounts" / svc.name;
+  auto rootfs = path / "rootfs";
+  boost::filesystem::create_directories(rootfs);
+  auto upper = path / ".upper";
+  boost::filesystem::create_directories(upper);
+  auto work = path / ".work";
+  boost::filesystem::create_directories(work);
+
+  auto imgdir = ctx.var_lib / "images" / svc.name;
+  if (!boost::filesystem::is_directory(imgdir)) {
+    throw std::runtime_error("Could not find image for service");
+  }
+
+  std::string cmd = "mount -t overlay overlay -o lowerdir=";
+  cmd += imgdir.string() + ",upperdir=" + upper.string() +
+         ",workdir=" + work.string() + " " + rootfs.string();
+  ctx.out() << "Mounting overlay\n";
+  boost::process::system(cmd);
+
   // TODO add ourselve to hooks in config.json
+  // TODO add path to root.path in config.json
   // exec crun ...
 }
 
@@ -51,7 +70,7 @@ static void pull(const Context &ctx, const Service &svc) {
   std::string id;
   out >> id;
 
-  auto imgdir = ctx.var_lib / "images" / svc.image;
+  auto imgdir = ctx.var_lib / "images" / svc.name;
   boost::filesystem::create_directories(imgdir);
 
   boost::process::pipe intermediate;
