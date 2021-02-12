@@ -17,9 +17,11 @@ int main(int argc, char **argv) {
   app.add_option("-d,--app-dir", app_dir, "Compose application directory",
                  true);
 
-  auto &up = *app.add_subcommand("up", "Start a compose service");
   std::string svc;
+  auto &up = *app.add_subcommand("up", "Start a compose service");
   up.add_option("service", svc, "Compose service")->required();
+  auto &pull = *app.add_subcommand("pull", "Pull container image for service");
+  pull.add_option("service", svc, "Compose service")->required();
   auto &create = *app.add_subcommand("createRuntime", "OCI createRuntime hook");
   auto &teardown = *app.add_subcommand("poststop", "OCI poststop hook");
 
@@ -34,6 +36,8 @@ int main(int argc, char **argv) {
   try {
     if (up) {
       capp_up(app_name, svc);
+    } else if (pull) {
+      capp_pull(app_name, svc);
     } else if (create) {
       oci_createRuntime(app_name);
     } else if (teardown) {

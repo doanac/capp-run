@@ -24,6 +24,7 @@ ProjectDefinition ProjectDefinition::Load(const std::string &path) {
     if (node.IsDefined()) {
       svc.networks = node.as<std::vector<std::string>>();
     }
+    svc.image = it->second["image"].as<std::string>();
     def.services.push_back(svc);
   }
   return def;

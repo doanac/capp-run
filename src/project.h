@@ -16,6 +16,7 @@ struct Volume {
 struct Service {
   Service(std::string name) : name(name) {}
   std::string name;
+  std::string image;
   std::vector<std::string> networks;
 };
 
