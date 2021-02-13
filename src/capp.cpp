@@ -3,6 +3,7 @@
 
 #include "capp.h"
 #include "context.h"
+#include "oci-hooks.h"
 #include "project.h"
 
 #ifndef DOCKER_ARCH
@@ -17,10 +18,6 @@ static void up(const Context &ctx, const Service &svc) {
     throw std::runtime_error("Could not find oci spec file for service");
   }
 
-  auto dst = ctx.var_run / svc.name / "config.json";
-  boost::filesystem::create_directories(dst.parent_path());
-  boost::filesystem::copy_file(spec, dst);
-
   auto path = ctx.var_lib / "mounts" / svc.name;
   auto rootfs = path / "rootfs";
   boost::filesystem::create_directories(rootfs);
@@ -28,6 +25,10 @@ static void up(const Context &ctx, const Service &svc) {
   boost::filesystem::create_directories(upper);
   auto work = path / ".work";
   boost::filesystem::create_directories(work);
+
+  auto dst = ctx.var_run / svc.name / "config.json";
+  boost::filesystem::create_directories(dst.parent_path());
+  ocispec_create(spec, dst, rootfs);
 
   auto imgdir = ctx.var_lib / "images" / svc.name;
   if (!boost::filesystem::is_directory(imgdir)) {
@@ -41,7 +42,6 @@ static void up(const Context &ctx, const Service &svc) {
   boost::process::system(cmd);
 
   // TODO add ourselve to hooks in config.json
-  // TODO add path to root.path in config.json
   // exec crun ...
 }
 
