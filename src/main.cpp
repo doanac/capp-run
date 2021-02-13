@@ -24,6 +24,7 @@ int main(int argc, char **argv) {
   pull.add_option("service", svc, "Compose service")->required();
   auto &create = *app.add_subcommand("createRuntime", "OCI createRuntime hook");
   auto &teardown = *app.add_subcommand("poststop", "OCI poststop hook");
+  teardown.add_option("service", svc, "Compose service")->required();
 
   app.require_subcommand(1);
   CLI11_PARSE(app, argc, argv);
@@ -41,7 +42,7 @@ int main(int argc, char **argv) {
     } else if (create) {
       oci_createRuntime(app_name);
     } else if (teardown) {
-      oci_poststop(app_name);
+      oci_poststop(app_name, svc);
     }
   } catch (const std::exception &ex) {
     std::cerr << ex.what() << "\n";

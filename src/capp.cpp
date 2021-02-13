@@ -28,7 +28,7 @@ static void up(const Context &ctx, const Service &svc) {
 
   auto dst = ctx.var_run / svc.name / "config.json";
   boost::filesystem::create_directories(dst.parent_path());
-  ocispec_create(spec, dst, rootfs);
+  ocispec_create(ctx.app, svc.name, spec, dst, rootfs);
 
   auto imgdir = ctx.var_lib / "images" / svc.name;
   if (!boost::filesystem::is_directory(imgdir)) {
@@ -42,7 +42,8 @@ static void up(const Context &ctx, const Service &svc) {
   boost::process::system(cmd);
 
   // TODO add ourselve to hooks in config.json
-  // exec crun ...
+  ctx.out() << "Run with: crun run -f " << dst << " " << ctx.app << "-"
+            << svc.name << "\n";
 }
 
 void capp_up(const std::string &app_name, const std::string &svc) {
