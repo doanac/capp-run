@@ -1,5 +1,7 @@
 #include <boost/filesystem.hpp>
 #include <boost/process.hpp>
+#include <sys/mount.h>
+#include <unistd.h>
 
 #include "capp.h"
 #include "context.h"
@@ -41,9 +43,16 @@ static void up(const Context &ctx, const Service &svc) {
   ctx.out() << "Mounting overlay\n";
   boost::process::system(cmd);
 
-  // TODO add ourselve to hooks in config.json
-  ctx.out() << "Run with: crun run -f " << dst << " " << ctx.app << "-"
+  ctx.out() << "Execing: crun run -f " << dst << " " << ctx.app << "-"
             << svc.name << "\n";
+  const char *crun = strdup(boost::process::search_path("crun").string().c_str());
+  const char *name = strdup((ctx.app + "-" + svc.name).c_str());
+  const char *config = strdup(dst.string().c_str());
+
+  execl(crun, crun, "run", "-f", config, name, NULL);
+  perror("Unable to execute crun");
+  umount(rootfs.c_str());
+  throw std::runtime_error("Unable to execute crun");
 }
 
 void capp_up(const std::string &app_name, const std::string &svc) {
