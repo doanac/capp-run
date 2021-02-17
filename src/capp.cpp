@@ -28,10 +28,6 @@ static void up(const Context &ctx, const Service &svc) {
   auto work = path / ".work";
   boost::filesystem::create_directories(work);
 
-  auto dst = ctx.var_run / svc.name / "config.json";
-  boost::filesystem::create_directories(dst.parent_path());
-  ocispec_create(ctx.app, svc.name, spec, dst, rootfs);
-
   auto imgdir = ctx.var_lib / "images" / svc.name;
   if (!boost::filesystem::is_directory(imgdir)) {
     throw std::runtime_error("Could not find image for service");
@@ -43,9 +39,14 @@ static void up(const Context &ctx, const Service &svc) {
   ctx.out() << "Mounting overlay\n";
   boost::process::system(cmd);
 
+  auto dst = ctx.var_run / svc.name / "config.json";
+  boost::filesystem::create_directories(dst.parent_path());
+  ocispec_create(ctx.app, svc, spec, dst, rootfs);
+
   ctx.out() << "Execing: crun run -f " << dst << " " << ctx.app << "-"
             << svc.name << "\n";
-  const char *crun = strdup(boost::process::search_path("crun").string().c_str());
+  const char *crun =
+      strdup(boost::process::search_path("crun").string().c_str());
   const char *name = strdup((ctx.app + "-" + svc.name).c_str());
   const char *config = strdup(dst.string().c_str());
 

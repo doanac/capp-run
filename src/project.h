@@ -17,6 +17,7 @@ struct Service {
   Service(std::string name) : name(name) {}
   std::string name;
   std::string image;
+  std::string user;
   std::vector<std::string> networks;
 };
 
