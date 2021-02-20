@@ -6,18 +6,23 @@
 #include "json.h"
 
 #include "context.h"
+#include "net.h"
 #include "project.h"
 
 void oci_createRuntime(const std::string &app_name, const std::string &svc) {
   auto ctx = Context::Load(app_name);
   auto proj = ProjectDefinition::Load("docker-compose.yml");
-  proj.get_service(svc);
+  auto s = proj.get_service(svc);
 
   // load oci hook data
   nlohmann::json data;
   std::cin >> data;
   int pid = data["pid"].get<int>();
   ctx.out() << "pid " << pid;
+
+  for (const auto &net : s.networks) {
+    network_render(ctx, net);
+  }
 }
 
 void oci_poststop(const std::string &app_name, const std::string &svc) {

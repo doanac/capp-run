@@ -23,7 +23,7 @@ find_package(PkgConfig REQUIRED)
 
 set(CMAKE_CXX_STANDARD 14)
 
-add_executable(capp-run src/main.cpp src/capp.cpp src/context.cpp src/oci-hooks.cpp src/project.cpp)
+add_executable(capp-run src/main.cpp src/capp.cpp src/context.cpp src/net.cpp src/oci-hooks.cpp src/project.cpp)
 target_include_directories(capp-run PRIVATE ${CMAKE_SOURCE_DIR}/third-party ${CMAKE_SOURCE_DIR}/third-party/yaml-cpp/include)
 target_link_libraries(capp-run -lpthread ${Boost_LIBRARIES} yaml-cpp)
 

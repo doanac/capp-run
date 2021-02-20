@@ -10,6 +10,7 @@ struct Context {
   boost::filesystem::path var_run;
   boost::filesystem::path var_lib;
 
+  std::map<std::string, std::string> network_interfaces() const;
   boost::filesystem::path volumes() const { return var_lib / "volumes"; }
 
   std::ostream &out() const { return std::cout; }
