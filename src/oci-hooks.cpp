@@ -9,9 +9,15 @@
 #include "project.h"
 
 void oci_createRuntime(const std::string &app_name, const std::string &svc) {
-  Context::Load(app_name);
+  auto ctx = Context::Load(app_name);
   auto proj = ProjectDefinition::Load("docker-compose.yml");
   proj.get_service(svc);
+
+  // load oci hook data
+  nlohmann::json data;
+  std::cin >> data;
+  int pid = data["pid"].get<int>();
+  ctx.out() << "pid " << pid;
 }
 
 void oci_poststop(const std::string &app_name, const std::string &svc) {
@@ -108,6 +114,14 @@ void ocispec_create(const std::string &app_name, const Service &svc,
   };
   hooks.emplace_back(entry);
   data["hooks"]["poststop"] = hooks;
+
+  hooks = {};
+  entry = {
+      {"path", exe.string()},
+      {"args", {"capp-run", "-n", app_name, "createRuntime", svc.name}},
+  };
+  hooks.emplace_back(entry);
+  data["hooks"]["createRuntime"] = hooks;
 
   fix_user(svc.user, rootfs, data);
 
