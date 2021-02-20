@@ -60,14 +60,7 @@ void capp_up(const std::string &app_name, const std::string &svc) {
   auto ctx = Context::Load(app_name);
   auto proj = ProjectDefinition::Load("docker-compose.yml");
 
-  for (const auto &s : proj.services) {
-    if (s.name == svc) {
-      up(ctx, s);
-      return;
-    }
-  }
-  std::string msg = "No such service: ";
-  throw std::runtime_error(msg + svc);
+  up(ctx, proj.get_service(svc));
 }
 
 static void pull(const Context &ctx, const Service &svc) {
@@ -100,12 +93,5 @@ void capp_pull(const std::string &app_name, const std::string &svc) {
   auto ctx = Context::Load(app_name);
   auto proj = ProjectDefinition::Load("docker-compose.yml");
 
-  for (const auto &s : proj.services) {
-    if (s.name == svc) {
-      pull(ctx, s);
-      return;
-    }
-  }
-  std::string msg = "No such service: ";
-  throw std::runtime_error(msg + svc);
+  pull(ctx, proj.get_service(svc));
 }

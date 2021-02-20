@@ -22,6 +22,8 @@ struct Service {
 };
 
 struct ProjectDefinition {
+  Service get_service(const std::string &name);
+
   std::vector<Network> networks;
   std::vector<Volume> volumes;
   std::vector<Service> services;

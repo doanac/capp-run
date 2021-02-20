@@ -34,3 +34,13 @@ ProjectDefinition ProjectDefinition::Load(const std::string &path) {
   }
   return def;
 }
+
+Service ProjectDefinition::get_service(const std::string &name) {
+  for (const auto &s : services) {
+    if (s.name == name) {
+      return s;
+    }
+  }
+  std::string msg = "No such service: ";
+  throw std::runtime_error(msg + name);
+}

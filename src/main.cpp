@@ -23,6 +23,7 @@ int main(int argc, char **argv) {
   auto &pull = *app.add_subcommand("pull", "Pull container image for service");
   pull.add_option("service", svc, "Compose service")->required();
   auto &create = *app.add_subcommand("createRuntime", "OCI createRuntime hook");
+  create.add_option("service", svc, "Compose service")->required();
   auto &teardown = *app.add_subcommand("poststop", "OCI poststop hook");
   teardown.add_option("service", svc, "Compose service")->required();
 
@@ -40,7 +41,7 @@ int main(int argc, char **argv) {
     } else if (pull) {
       capp_pull(app_name, svc);
     } else if (create) {
-      oci_createRuntime(app_name);
+      oci_createRuntime(app_name, svc);
     } else if (teardown) {
       oci_poststop(app_name, svc);
     }

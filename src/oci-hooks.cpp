@@ -8,9 +8,10 @@
 #include "context.h"
 #include "project.h"
 
-void oci_createRuntime(const std::string &app_name) {
+void oci_createRuntime(const std::string &app_name, const std::string &svc) {
   Context::Load(app_name);
-  ProjectDefinition::Load("docker-compose.yml");
+  auto proj = ProjectDefinition::Load("docker-compose.yml");
+  proj.get_service(svc);
 }
 
 void oci_poststop(const std::string &app_name, const std::string &svc) {
