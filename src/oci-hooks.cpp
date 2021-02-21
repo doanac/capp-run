@@ -11,6 +11,8 @@
 
 void oci_createRuntime(const std::string &app_name, const std::string &svc) {
   auto ctx = Context::Load(app_name);
+  std::ofstream logf((ctx.var_run / "createRuntime.log").string());
+  ctx.out_ = &logf;
   auto proj = ProjectDefinition::Load("docker-compose.yml");
   auto s = proj.get_service(svc);
 
@@ -27,6 +29,8 @@ void oci_createRuntime(const std::string &app_name, const std::string &svc) {
 
 void oci_poststop(const std::string &app_name, const std::string &svc) {
   auto ctx = Context::Load(app_name);
+  std::ofstream logf((ctx.var_run / "poststop.log").string());
+  ctx.out_ = &logf;
   auto rootfs = ctx.var_lib / "mounts" / svc / "rootfs";
   if (umount(rootfs.c_str()) != 0) {
     throw std::runtime_error("Unable to unmount container rootfs");

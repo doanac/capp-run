@@ -10,10 +10,12 @@ struct Context {
   boost::filesystem::path var_run;
   boost::filesystem::path var_lib;
 
+  std::ostream *out_;
+
   std::map<std::string, std::string> network_interfaces() const;
   boost::filesystem::path volumes() const { return var_lib / "volumes"; }
 
-  std::ostream &out() const { return std::cout; }
+  std::ostream &out() const { return *out_; }
 
   static Context Load(const std::string app) {
     boost::filesystem::path run("/var/run/capprun");
@@ -29,6 +31,6 @@ struct Context {
     }
     lib = lib / app;
 
-    return {.app = app, .var_run = run, .var_lib = lib};
+    return {.app = app, .var_run = run, .var_lib = lib, .out_ = &std::cout};
   }
 };
