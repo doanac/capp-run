@@ -1,11 +1,29 @@
-#include "context.h"
+#include "net.h"
 
-#include <boost/process.hpp>
 #include <fcntl.h>
 #include <sys/file.h>
 #include <sys/stat.h>
 
 #include "json.h"
+
+static int shell(const std::string &command, std::string *output) {
+  std::array<char, 128> buffer{};
+  std::string full_command(command);
+  full_command += " 2>&1";
+
+  FILE *pipe = popen(full_command.c_str(), "r");
+  if (pipe == nullptr) {
+    *output = "popen() failed!";
+    return -1;
+  }
+  while (feof(pipe) == 0) {
+    if (fgets(buffer.data(), buffer.size(), pipe) != nullptr) {
+      *output += buffer.data();
+    }
+  }
+  int exitcode = pclose(pipe);
+  return WEXITSTATUS(exitcode);
+}
 
 class Lock {
 public:
@@ -97,6 +115,7 @@ void network_render(const Context &ctx, const std::string &name) {
   nlohmann::json data;
   data["gateway"] = gateway;
   data["bridge"] = bridge;
+  data["hosts"] = {};
   gw << data;
 
   std::ofstream mk((path / "mk-network").string());
@@ -128,8 +147,146 @@ void network_render(const Context &ctx, const std::string &name) {
   rm.close();
   chmod((path / "rm-network").string().c_str(), S_IRWXU);
 
-  int exit_code = boost::process::system(path / "mk-network");
+  std::string out;
+  int exit_code = shell((path / "mk-network").string(), &out);
+  ctx.out() << out << "\n";
   if (exit_code != 0) {
     throw std::runtime_error("Unable to setup network");
   }
+}
+
+struct ipinfo {
+  std::string ip;
+  std::string gateway;
+  std::string bridge;
+};
+
+static ipinfo acquire_ip(const boost::filesystem::path &info,
+                         const std::string &host) {
+  ipinfo inf{};
+  auto lock = create_lock(info);
+
+  std::ifstream in(info.string());
+  if (!in.is_open()) {
+    throw std::runtime_error("Unable to read gateway info");
+  }
+  nlohmann::json data;
+  in >> data;
+  inf.gateway = data["gateway"].get<std::string>();
+  inf.bridge = data["bridge"].get<std::string>();
+
+  auto base = inf.gateway.substr(0, inf.gateway.size() - 1);
+  for (int i = 2; i < 30; i++) {
+    bool found = false;
+    std::string ip = base + std::to_string(i);
+    for (const auto &it : data["hosts"].items()) {
+      if (it.value() == ip) {
+        found = true;
+      } else if (it.key() == host) {
+        found = false;
+        ip = it.value();
+        break;
+      }
+    }
+    if (!found) {
+      data["hosts"][host] = ip;
+      inf.ip = ip;
+      std::ofstream gw(info.string());
+      if (!gw.is_open()) {
+        throw std::runtime_error("Unable to update network info");
+      }
+      gw << data;
+      return inf;
+    }
+  }
+  throw std::runtime_error("Unable to find an available IP in network");
+}
+
+static std::string
+find_intf(const std::map<std::string, std::string> &interfaces) {
+  std::string base = "vcomp-";
+  for (int i = 1; i < 30; i++) {
+    std::string name = base + std::to_string(i);
+    // the link we'll see is "br-" side - the "name" will be in a netns
+    if (interfaces.find("br-" + name) == interfaces.end()) {
+      return name;
+    }
+  }
+  throw std::runtime_error("Unable to find an available interface");
+}
+
+void network_join(const Context &ctx, const Service &svc, int pid) {
+  std::string ns = ctx.app + "-" + svc.name;
+
+  auto path = ctx.var_run / svc.name;
+  boost::filesystem::create_directories(path);
+
+  std::ofstream rm((path / "rm-network").string());
+  if (!rm.is_open()) {
+    throw std::runtime_error("Unable to create network script");
+  }
+  rm << "#!/bin/sh -x\n";
+
+  std::ofstream mk((path / "mk-network").string());
+  if (!mk.is_open()) {
+    throw std::runtime_error("Unable to create network script");
+  }
+
+  auto interfaces = ctx.network_interfaces();
+
+  mk << "#!/bin/sh -ex\n"
+     << "[ -d /var/run/netns ] || mkdir /var/run/netns\n"
+     << "ln -sf /proc/" << pid << "/ns/net /var/run/netns/" << ns << "\n";
+
+  bool default_set = false;
+  for (const auto net : svc.networks) {
+    ctx.out() << "Joining " << net << "\n";
+    auto inf = acquire_ip(ctx.var_run / "networks" / net / "info", svc.name);
+    ctx.out() << " bridge: " << inf.bridge << "\n";
+    ctx.out() << " gateway: " << inf.gateway << "\n";
+    ctx.out() << " ip: " << inf.ip << "\n";
+
+    auto intf = find_intf(interfaces);
+    ctx.out() << " interface: " << intf << "\n";
+    interfaces["br-" + intf] =
+        inf.ip; // mark it so the next loop doesn't use it
+
+    // TODO expose ports properly with iptables
+    mk << "\n# net " << net << "\n"
+       << "ip link add " << intf << " type veth peer name br-" << intf << "\n"
+       << "ip link set " << intf << " netns " << ns << "\n"
+       << "ip netns exec " << ns << " ip addr add " << inf.ip << "/24 dev "
+       << intf << "\n"
+       << "ip link set br-" << intf << " up\n"
+       << "ip netns exec " << ns << " ip link set lo up\n"
+       << "ip netns exec " << ns << " ip link set " << intf << " up\n"
+       << "ip link set br-" << intf << " master " << inf.bridge << "\n";
+    if (!default_set) {
+      mk << "ip netns exec " << ns << " ip route add default via "
+         << inf.gateway << " || echo andy????"
+         << "\n";
+      default_set = true;
+    }
+  }
+  mk.close();
+  chmod((path / "mk-network").string().c_str(), S_IRWXU);
+
+  rm << "ip netns del " << ns << "\n";
+  rm.close();
+  chmod((path / "rm-network").string().c_str(), S_IRWXU);
+
+  std::string out;
+  int exit_code = shell((path / "mk-network").string(), &out);
+  ctx.out() << out << "\n";
+  if (exit_code != 0) {
+    throw std::runtime_error("Unable to setup network");
+  }
+}
+
+bool network_destroy(const Context &ctx, const Service &svc) {
+  auto path = ctx.var_run / svc.name / "rm-network";
+  std::string out;
+  int exit_code = shell(path.string(), &out);
+  ctx.out() << out << "\n";
+  return exit_code == 0;
 }

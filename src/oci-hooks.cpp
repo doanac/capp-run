@@ -20,10 +20,16 @@ void oci_createRuntime(const std::string &app_name, const std::string &svc) {
   nlohmann::json data;
   std::cin >> data;
   int pid = data["pid"].get<int>();
-  ctx.out() << "pid " << pid;
 
   for (const auto &net : s.networks) {
     network_render(ctx, net);
+  }
+
+  try {
+    network_join(ctx, s, pid);
+  } catch (const std::exception &ex) {
+    logf << ex.what() << "\n";
+    throw ex;
   }
 }
 
@@ -31,9 +37,25 @@ void oci_poststop(const std::string &app_name, const std::string &svc) {
   auto ctx = Context::Load(app_name);
   std::ofstream logf((ctx.var_run / "poststop.log").string());
   ctx.out_ = &logf;
+  auto proj = ProjectDefinition::Load("docker-compose.yml");
+  auto s = proj.get_service(svc);
+
+  std::string err;
+
   auto rootfs = ctx.var_lib / "mounts" / svc / "rootfs";
   if (umount(rootfs.c_str()) != 0) {
-    throw std::runtime_error("Unable to unmount container rootfs");
+    err = "Unable to unmount container rootfs";
+  }
+
+  if (!network_destroy(ctx, s)) {
+    if (!err.empty()) {
+      err += "\n";
+    }
+    err += "Unable to destroy container network";
+  }
+
+  if (!err.empty()) {
+    throw std::runtime_error(err);
   }
 }
 
