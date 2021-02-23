@@ -25,29 +25,49 @@ static int shell(const std::string &command, std::string *output) {
   return WEXITSTATUS(exitcode);
 }
 
-class Lock {
+class LockedFile {
 public:
-  Lock(int fd) : fd_(fd) {}
-  ~Lock() {
-    if (fd_ != -1) {
-      close(fd_);
-    }
-  }
+  LockedFile(const boost::filesystem::path &path);
+  ~LockedFile();
+
+  std::string read() const;
+  void write(const std::string &buf);
 
 private:
-  int fd_;
+  FILE *fd_;
 };
 
-static std::unique_ptr<Lock> create_lock(boost::filesystem::path lockfile) {
-  int fd = open(lockfile.c_str(), O_RDWR | O_CREAT | O_APPEND, 0666);
-  if (fd < 0) {
-    throw std::runtime_error("Unable to open network lock file");
+LockedFile::LockedFile(const boost::filesystem::path &path) {
+  fd_ = fopen(path.string().c_str(), "a+");
+  if (fd_ == NULL) {
+    throw std::runtime_error("Unable to file");
   }
-  if (flock(fd, LOCK_EX) < 0) {
-    throw std::runtime_error("Unable to acquire network lock file");
-    close(fd);
+  if (flock(fileno(fd_), LOCK_EX) != 0) {
+    throw std::runtime_error("Unable to lock file");
   }
-  return std::make_unique<Lock>(fd);
+}
+
+LockedFile::~LockedFile() { fclose(fd_); }
+
+std::string LockedFile::read() const {
+  fseek(fd_, 0, SEEK_END);
+  size_t size = ftell(fd_);
+  fseek(fd_, 0, SEEK_SET);
+
+  char *buf = (char *)calloc(size + 1, 1);
+  if (fread(buf, 1, size, fd_) != size) {
+    free(buf);
+    throw std::runtime_error("Unable to read contents of file");
+  }
+  std::string rv(buf);
+  free(buf);
+  return rv;
+}
+
+void LockedFile::write(const std::string &buf) {
+  fseek(fd_, 0, SEEK_SET);
+  ftruncate(fileno(fd_), 0);
+  fwrite(buf.c_str(), 1, buf.size(), fd_);
 }
 
 static std::string
@@ -90,7 +110,7 @@ void network_render(const Context &ctx, const std::string &name) {
 
   // Make sure 2 different containers don't do this at the same time if they
   // share the same network
-  auto lock = create_lock(path / ".lock");
+  LockedFile lock(path / ".lock");
 
   auto gwinfo = path / "info";
   if (boost::filesystem::exists(gwinfo)) {
@@ -164,7 +184,7 @@ struct ipinfo {
 static ipinfo acquire_ip(const boost::filesystem::path &info,
                          const std::string &host) {
   ipinfo inf{};
-  auto lock = create_lock(info);
+  LockedFile lock(info);
 
   std::ifstream in(info.string());
   if (!in.is_open()) {
@@ -213,6 +233,20 @@ find_intf(const std::map<std::string, std::string> &interfaces) {
     }
   }
   throw std::runtime_error("Unable to find an available interface");
+}
+
+static void _set_hosts(const boost::filesystem::path &path,
+                       const std::string &host, const std::string &ip) {
+  LockedFile hosts(path);
+  auto content = hosts.read();
+  if (content.size() == 0) {
+    content = "127.0.0.1\tlocalhost\n";
+  }
+  std::string line = ip + "\t" + host + "\n";
+  if (content.find(line) == std::string::npos) {
+    content += line;
+  }
+  hosts.write(content);
 }
 
 void network_join(const Context &ctx, const Service &svc, int pid) {
@@ -267,6 +301,8 @@ void network_join(const Context &ctx, const Service &svc, int pid) {
          << "\n";
       default_set = true;
     }
+
+    _set_hosts(ctx.var_run / "etc_hosts", svc.name, inf.ip);
   }
   mk.close();
   chmod((path / "mk-network").string().c_str(), S_IRWXU);

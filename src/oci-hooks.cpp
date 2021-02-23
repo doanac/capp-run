@@ -133,7 +133,8 @@ static void fix_user(const std::string &user,
 void ocispec_create(const std::string &app_name, const Service &svc,
                     const boost::filesystem::path &spec,
                     const boost::filesystem::path &out,
-                    const boost::filesystem::path &rootfs) {
+                    const boost::filesystem::path &rootfs,
+                    const boost::filesystem::path &etc_hosts) {
 
   auto exe = boost::filesystem::read_symlink("/proc/self/exe");
   boost::filesystem::ifstream config(spec);
@@ -157,6 +158,13 @@ void ocispec_create(const std::string &app_name, const Service &svc,
   data["hooks"]["createRuntime"] = hooks;
 
   fix_user(svc.user, rootfs, data);
+
+  entry = {
+      {"destination", "/etc/hosts"},
+      {"source", etc_hosts.string()},
+      {"options", {"bind", "rprivate", "ro"}},
+  };
+  data["mounts"].emplace_back(entry);
 
   boost::filesystem::ofstream os(out);
   os << data;
