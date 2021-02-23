@@ -11,10 +11,11 @@
 
 void oci_createRuntime(const std::string &app_name, const std::string &svc) {
   auto ctx = Context::Load(app_name);
-  std::ofstream logf((ctx.var_run / "createRuntime.log").string());
-  ctx.out_ = &logf;
   auto proj = ProjectDefinition::Load("docker-compose.yml");
   auto s = proj.get_service(svc);
+
+  std::ofstream logf((ctx.var_run / svc / "createRuntime.log").string());
+  ctx.out_ = &logf;
 
   // load oci hook data
   nlohmann::json data;
@@ -35,10 +36,11 @@ void oci_createRuntime(const std::string &app_name, const std::string &svc) {
 
 void oci_poststop(const std::string &app_name, const std::string &svc) {
   auto ctx = Context::Load(app_name);
-  std::ofstream logf((ctx.var_run / "poststop.log").string());
-  ctx.out_ = &logf;
   auto proj = ProjectDefinition::Load("docker-compose.yml");
   auto s = proj.get_service(svc);
+
+  std::ofstream logf((ctx.var_run / svc / "poststop.log").string());
+  ctx.out_ = &logf;
 
   std::string err;
 
