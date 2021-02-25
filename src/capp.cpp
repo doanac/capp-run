@@ -41,7 +41,9 @@ static void up(const Context &ctx, const Service &svc) {
   cmd += imgdir.string() + ",upperdir=" + upper.string() +
          ",workdir=" + work.string() + " " + rootfs.string();
   ctx.out() << "Mounting overlay\n";
-  boost::process::system(cmd);
+  if (boost::process::system(cmd) != 0) {
+    throw std::runtime_error("Unable to mount overlayfs");
+  }
 
   auto dst = ctx.var_run / svc.name / "config.json";
   boost::filesystem::create_directories(dst.parent_path());
