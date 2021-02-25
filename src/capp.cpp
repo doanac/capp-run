@@ -17,7 +17,10 @@ static void up(const Context &ctx, const Service &svc) {
   auto spec =
       boost::filesystem::current_path() / ".specs" / svc.name / DOCKER_ARCH;
   if (!boost::filesystem::is_regular_file(spec)) {
-    throw std::runtime_error("Could not find oci spec file for service");
+    spec = boost::filesystem::current_path() / ".specs" / svc.name / "default";
+    if (!boost::filesystem::is_regular_file(spec)) {
+      throw std::runtime_error("Could not find oci spec file for service");
+    }
   }
 
   auto path = ctx.var_lib / "mounts" / svc.name;
