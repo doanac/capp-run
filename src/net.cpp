@@ -272,6 +272,7 @@ void network_join(const Context &ctx, const Service &svc, int pid) {
      << "[ -d /var/run/netns ] || mkdir /var/run/netns\n"
      << "ln -sf /proc/" << pid << "/ns/net /var/run/netns/" << ns << "\n";
 
+  std::string default_ip;
   bool default_set = false;
   for (const auto net : svc.networks) {
     ctx.out() << "Joining " << net << "\n";
@@ -285,7 +286,6 @@ void network_join(const Context &ctx, const Service &svc, int pid) {
     interfaces["br-" + intf] =
         inf.ip; // mark it so the next loop doesn't use it
 
-    // TODO expose ports properly with iptables
     mk << "\n# net " << net << "\n"
        << "ip link add " << intf << " type veth peer name br-" << intf << "\n"
        << "ip link set " << intf << " netns " << ns << "\n"
@@ -299,10 +299,20 @@ void network_join(const Context &ctx, const Service &svc, int pid) {
       mk << "ip netns exec " << ns << " ip route add default via "
          << inf.gateway << " || echo andy????"
          << "\n";
+      default_ip = inf.ip;
       default_set = true;
     }
 
     _set_hosts(ctx.var_run / "etc_hosts", svc.name, inf.ip);
+  }
+
+  for (const auto &p : svc.ports) {
+    mk << "iptables -t nat -A OUTPUT -p " << p.protocol << " --match "
+       << p.protocol << " --dport " << p.host_port << " --jump DNAT --to "
+       << default_ip << ":" << p.target_port << "\n";
+    rm << "iptables -t nat -D OUTPUT -p " << p.protocol << " --match "
+       << p.protocol << " --dport " << p.host_port << " --jump DNAT --to "
+       << default_ip << ":" << p.target_port << "\n";
   }
   mk.close();
   chmod((path / "mk-network").string().c_str(), S_IRWXU);
