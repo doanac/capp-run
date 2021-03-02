@@ -12,7 +12,8 @@
 #error Missing DOCKER_ARCH
 #endif
 
-static void up(const Context &ctx, const Service &svc) {
+static void up(const Context &ctx, const Service &svc,
+               const std::vector<Volume> &volumes) {
   ctx.out() << "Starting " << svc.name << "\n";
   auto spec =
       boost::filesystem::current_path() / ".specs" / svc.name / DOCKER_ARCH;
@@ -50,7 +51,8 @@ static void up(const Context &ctx, const Service &svc) {
 
   auto dst = ctx.var_run / svc.name / "config.json";
   boost::filesystem::create_directories(dst.parent_path());
-  ocispec_create(ctx.app, svc, spec, dst, rootfs, hosts);
+  ocispec_create(ctx.app, ctx.volumes(), svc, volumes, spec, dst, rootfs,
+                 hosts);
 
   ctx.out() << "Execing: crun run -f " << dst << " " << ctx.app << "-"
             << svc.name << "\n";
@@ -69,7 +71,15 @@ void capp_up(const std::string &app_name, const std::string &svc) {
   auto ctx = Context::Load(app_name);
   auto proj = ProjectDefinition::Load("docker-compose.yml");
 
-  up(ctx, proj.get_service(svc));
+  for (const auto &v : proj.volumes) {
+    auto p = ctx.volumes() / v.name;
+    if (!boost::filesystem::exists(p)) {
+      ctx.out() << "Creating volume: " << v.name << "\n";
+      boost::filesystem::create_directories(p);
+    }
+  }
+
+  up(ctx, proj.get_service(svc), proj.volumes);
 }
 
 static void pull(const Context &ctx, const Service &svc) {

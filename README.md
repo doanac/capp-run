@@ -49,6 +49,6 @@ Run one of the compose services with:
 ## Missing Features
 
 * Networking is quite limited, but progressing
-* Volumes not yet done
+* Volumes mostly worker, not 100%
 * Can't run all services in a single command. The idea is systemd will handle
   this.

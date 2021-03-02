@@ -130,7 +130,33 @@ static void fix_user(const std::string &user,
   }
 }
 
-void ocispec_create(const std::string &app_name, const Service &svc,
+static void fix_mounts(const boost::filesystem::path &volumes_path,
+                       const std::vector<Volume> &volumes,
+                       nlohmann::json &spec) {
+  for (auto &m : spec["mounts"]) {
+    auto source = m["source"].get<std::string>();
+    if (m["type"].get<std::string>() == "bind") {
+      if (source[0] != '/') {
+        // source is relative to the compose-app directory
+        if (!boost::filesystem::exists(source)) {
+          boost::filesystem::create_directories(source);
+        }
+      }
+    } else if (m["type"].get<std::string>() == "volume") {
+      for (const auto &v : volumes) {
+        if (source == v.name) {
+          // using shared volume
+          m["source"] = (volumes_path / source).string();
+          break;
+        }
+      }
+    }
+  }
+}
+
+void ocispec_create(const std::string &app_name,
+                    const boost::filesystem::path &volumes_path,
+                    const Service &svc, const std::vector<Volume> &volumes,
                     const boost::filesystem::path &spec,
                     const boost::filesystem::path &out,
                     const boost::filesystem::path &rootfs,
@@ -158,6 +184,8 @@ void ocispec_create(const std::string &app_name, const Service &svc,
   data["hooks"]["createRuntime"] = hooks;
 
   fix_user(svc.user, rootfs, data);
+
+  fix_mounts(volumes_path, volumes, data);
 
   entry = {
       {"destination", "/etc/hosts"},
