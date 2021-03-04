@@ -12,6 +12,20 @@
 #error Missing DOCKER_ARCH
 #endif
 
+static bool is_mounted(const std::string &path) {
+  std::ifstream file("/proc/mounts");
+  std::string line;
+  while (getline(file, line)) {
+    auto start = line.find(' ') + 1;
+    auto end = line.find(' ', start + 1);
+    auto mnt = line.substr(start, end - start);
+    if (mnt == path) {
+      return true;
+    }
+  }
+  return false;
+}
+
 static boost::filesystem::path
 overlay_mount(const Context &ctx, const boost::filesystem::path &imgdir,
               const boost::filesystem::path &base) {
@@ -21,6 +35,11 @@ overlay_mount(const Context &ctx, const boost::filesystem::path &imgdir,
   boost::filesystem::create_directories(upper);
   auto work = base / ".work";
   boost::filesystem::create_directories(work);
+
+  if (is_mounted(rootfs.string())) {
+    ctx.out() << "Overlay is mounted, skipping re-mount\n";
+    return rootfs;
+  }
 
   std::string cmd = "mount -t overlay overlay -o lowerdir=";
   cmd += imgdir.string() + ",upperdir=" + upper.string() +
