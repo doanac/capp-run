@@ -12,6 +12,27 @@
 #error Missing DOCKER_ARCH
 #endif
 
+static boost::filesystem::path
+overlay_mount(const Context &ctx, const boost::filesystem::path &imgdir,
+              const boost::filesystem::path &base) {
+  auto rootfs = base / "rootfs";
+  boost::filesystem::create_directories(rootfs);
+  auto upper = base / ".upper";
+  boost::filesystem::create_directories(upper);
+  auto work = base / ".work";
+  boost::filesystem::create_directories(work);
+
+  std::string cmd = "mount -t overlay overlay -o lowerdir=";
+  cmd += imgdir.string() + ",upperdir=" + upper.string() +
+         ",workdir=" + work.string() + " " + rootfs.string();
+
+  ctx.out() << "Mounting overlay\n";
+  if (boost::process::system(cmd) != 0) {
+    throw std::runtime_error("Unable to mount overlayfs");
+  }
+  return rootfs;
+}
+
 static void up(const Context &ctx, const Service &svc,
                const std::vector<Volume> &volumes) {
   ctx.out() << "Starting " << svc.name << "\n";
@@ -24,14 +45,6 @@ static void up(const Context &ctx, const Service &svc,
     }
   }
 
-  auto path = ctx.var_lib / "mounts" / svc.name;
-  auto rootfs = path / "rootfs";
-  boost::filesystem::create_directories(rootfs);
-  auto upper = path / ".upper";
-  boost::filesystem::create_directories(upper);
-  auto work = path / ".work";
-  boost::filesystem::create_directories(work);
-
   auto hosts = ctx.var_run / "etc_hosts";
   std::ofstream outfile(hosts.string(), std::ios_base::app);
   outfile.close();
@@ -41,13 +54,7 @@ static void up(const Context &ctx, const Service &svc,
     throw std::runtime_error("Could not find image for service");
   }
 
-  std::string cmd = "mount -t overlay overlay -o lowerdir=";
-  cmd += imgdir.string() + ",upperdir=" + upper.string() +
-         ",workdir=" + work.string() + " " + rootfs.string();
-  ctx.out() << "Mounting overlay\n";
-  if (boost::process::system(cmd) != 0) {
-    throw std::runtime_error("Unable to mount overlayfs");
-  }
+  auto rootfs = overlay_mount(ctx, imgdir, ctx.var_lib / "mounts" / svc.name);
 
   auto dst = ctx.var_run / svc.name / "config.json";
   boost::filesystem::create_directories(dst.parent_path());
