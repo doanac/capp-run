@@ -16,9 +16,9 @@ std::map<std::string, std::string> Context::network_interfaces() const {
   for (struct ifaddrs *ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next) {
     if (ifa->ifa_addr != NULL) {
       int fam = ifa->ifa_addr->sa_family;
-      if (fam == AF_INET) {
+      if (fam == AF_INET || fam == AF_INET6) {
         struct sockaddr_in *sa = (struct sockaddr_in *)ifa->ifa_addr;
-        char buf[INET_ADDRSTRLEN];
+        char buf[INET6_ADDRSTRLEN];
         if (inet_ntop(fam, &sa->sin_addr, buf, sizeof(buf)) == NULL) {
           std::string msg = "Unable to parse ";
           throw std::runtime_error(msg + ifa->ifa_name);
