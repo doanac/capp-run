@@ -28,6 +28,7 @@ struct Service {
   std::string network_mode;
   std::vector<std::string> networks;
   std::vector<Port> ports;
+  std::vector<std::string> security_opts;
 };
 
 struct ProjectDefinition {

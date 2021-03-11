@@ -88,6 +88,12 @@ ProjectDefinition ProjectDefinition::Load(const std::string &path) {
     if (ports.IsDefined()) {
       parse_ports(ports.as<std::vector<std::string>>(), svc.ports);
     }
+
+    auto sec_opts = it->second["security_opt"];
+    if (sec_opts.IsDefined()) {
+      svc.security_opts = sec_opts.as<std::vector<std::string>>();
+    }
+
     def.services.push_back(svc);
   }
   return def;

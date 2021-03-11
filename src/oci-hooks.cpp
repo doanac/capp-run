@@ -154,6 +154,29 @@ static void fix_mounts(const boost::filesystem::path &volumes_path,
   }
 }
 
+static void add_seccomp(const std::vector<std::string> sec_opts,
+                        nlohmann::json &spec) {
+  // by default load the one provided by the bundle, which is
+  // capp-pub gets from docker
+  std::string profile = ".specs/.default-secomp.json";
+  for (const auto &opt : sec_opts) {
+    if (opt.rfind("seccomp:", 0) == 0) {
+      profile = opt.substr(8);
+      if (profile == "unconfined") {
+        return;
+      }
+      break;
+    } else {
+      throw std::runtime_error("Unsupport security opt: " + opt);
+    }
+  }
+
+  boost::filesystem::ifstream inf(profile);
+  nlohmann::json seccomp;
+  inf >> seccomp;
+  spec["linux"]["seccomp"] = seccomp;
+}
+
 void ocispec_create(const std::string &app_name,
                     const boost::filesystem::path &volumes_path,
                     const Service &svc, const std::vector<Volume> &volumes,
@@ -186,6 +209,8 @@ void ocispec_create(const std::string &app_name,
   fix_user(svc.user, rootfs, data);
 
   fix_mounts(volumes_path, volumes, data);
+
+  add_seccomp(svc.security_opts, data);
 
   entry = {
       {"destination", "/etc/hosts"},
