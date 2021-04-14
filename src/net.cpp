@@ -252,6 +252,7 @@ static void _set_hosts(const boost::filesystem::path &path,
 void network_join(const Context &ctx, const Service &svc, int pid) {
   std::string ns = ctx.app + "-" + svc.name;
 
+  LockedFile lock(ctx.var_run / ".lock");
   auto path = ctx.var_run / svc.name;
   boost::filesystem::create_directories(path);
 
