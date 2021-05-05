@@ -8,6 +8,7 @@
 #include "context.h"
 #include "net.h"
 #include "project.h"
+#include "utils.h"
 
 void oci_createRuntime(const std::string &app_name, const std::string &svc) {
   auto ctx = Context::Load(app_name);
@@ -68,7 +69,7 @@ struct user {
 
 static void find_user(const boost::filesystem::path &passwd,
                       const std::string &user, struct user &entry) {
-  std::ifstream infile(passwd.string());
+  auto infile = open_read(passwd);
   std::string line;
   while (std::getline(infile, line)) {
     std::vector<std::string> parts;
@@ -84,7 +85,7 @@ static void find_user(const boost::filesystem::path &passwd,
 
 static int find_group(const boost::filesystem::path &grp,
                       const std::string &group) {
-  std::ifstream infile(grp.string());
+  auto infile = open_read(grp);
   std::string line;
   while (std::getline(infile, line)) {
     std::vector<std::string> parts;
@@ -171,9 +172,8 @@ static void add_seccomp(const std::vector<std::string> sec_opts,
     }
   }
 
-  boost::filesystem::ifstream inf(profile);
   nlohmann::json seccomp;
-  inf >> seccomp;
+  open_read(profile) >> seccomp;
   spec["linux"]["seccomp"] = seccomp;
 }
 
@@ -186,9 +186,8 @@ void ocispec_create(const std::string &app_name,
                     const boost::filesystem::path &etc_hosts) {
 
   auto exe = boost::filesystem::read_symlink("/proc/self/exe");
-  boost::filesystem::ifstream config(spec);
   nlohmann::json data;
-  config >> data;
+  open_read(spec) >> data;
   data["root"]["path"] = rootfs.string();
   nlohmann::json hooks = {};
   nlohmann::json entry = {

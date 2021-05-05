@@ -16,7 +16,7 @@
 #endif
 
 static bool is_mounted(const std::string &path) {
-  std::ifstream file("/proc/mounts");
+  auto file = open_read("/proc/mounts");
   std::string line;
   while (getline(file, line)) {
     auto start = line.find(' ') + 1;

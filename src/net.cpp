@@ -181,12 +181,8 @@ static ipinfo acquire_ip(const boost::filesystem::path &info,
   ipinfo inf{};
   LockedFile lock(info);
 
-  std::ifstream in(info.string());
-  if (!in.is_open()) {
-    throw std::runtime_error("Unable to read gateway info");
-  }
   nlohmann::json data;
-  in >> data;
+  open_read(info) >> data;
   inf.gateway = data["gateway"].get<std::string>();
   inf.bridge = data["bridge"].get<std::string>();
 
