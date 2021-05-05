@@ -6,6 +6,8 @@
 
 #include "json.h"
 
+#include "utils.h"
+
 static int shell(const std::string &command, std::string *output) {
   std::array<char, 128> buffer{};
   std::string full_command(command);
@@ -131,20 +133,13 @@ void network_render(const Context &ctx, const std::string &name) {
   ctx.out() << "Creating network(" << network << ") gateway-ip(" << gateway
             << ")\n";
 
-  std::ofstream gw(gwinfo.string());
-  if (!gw.is_open()) {
-    throw std::runtime_error("Unable to create gateway info");
-  }
   nlohmann::json data;
   data["gateway"] = gateway;
   data["bridge"] = bridge;
   data["hosts"] = {};
-  gw << data;
+  open_write(gwinfo) << data;
 
-  std::ofstream mk((path / "mk-network").string());
-  if (!mk.is_open()) {
-    throw std::runtime_error("Unable to create network script");
-  }
+  auto mk = open_write(path / "mk-network");
   // TODO - the bridges are allowing traffic between them
   mk << "#!/bin/sh -ex\n"
      << "ip link add " << bridge << " type bridge\n"
@@ -157,10 +152,7 @@ void network_render(const Context &ctx, const std::string &name) {
   mk.close();
   chmod((path / "mk-network").string().c_str(), S_IRWXU);
 
-  std::ofstream rm((path / "rm-network").string());
-  if (!rm.is_open()) {
-    throw std::runtime_error("Unable to create network script");
-  }
+  auto rm = open_write(path / "rm-network");
   rm << "#!/bin/sh -x\n"
      << "iptables -t nat -D POSTROUTING -s " << network << "\n"
      << "iptables -D FORWARD -i " << bridge << " -j ACCEPT\n"
@@ -214,11 +206,7 @@ static ipinfo acquire_ip(const boost::filesystem::path &info,
     if (!found) {
       data["hosts"][host] = ip;
       inf.ip = ip;
-      std::ofstream gw(info.string());
-      if (!gw.is_open()) {
-        throw std::runtime_error("Unable to update network info");
-      }
-      gw << data;
+      open_write(info) << data;
       return inf;
     }
   }
@@ -259,16 +247,10 @@ void network_join(const Context &ctx, const Service &svc, int pid) {
   auto path = ctx.var_run / svc.name;
   boost::filesystem::create_directories(path);
 
-  std::ofstream rm((path / "rm-network").string());
-  if (!rm.is_open()) {
-    throw std::runtime_error("Unable to create network script");
-  }
+  auto rm = open_write(path / "rm-network");
   rm << "#!/bin/sh -x\n";
 
-  std::ofstream mk((path / "mk-network").string());
-  if (!mk.is_open()) {
-    throw std::runtime_error("Unable to create network script");
-  }
+  auto mk = open_write(path / "mk-network");
 
   auto interfaces = ctx.network_interfaces();
 

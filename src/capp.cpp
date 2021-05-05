@@ -9,6 +9,7 @@
 #include "context.h"
 #include "oci-hooks.h"
 #include "project.h"
+#include "utils.h"
 
 #ifndef DOCKER_ARCH
 #error Missing DOCKER_ARCH
@@ -246,12 +247,7 @@ static bool _copy_if_changed(const std::string &app_name,
                      boost::filesystem::current_path().string());
 
   if (src_content != dst_content) {
-    std::ofstream f(dst.string());
-    if (!f.is_open()) {
-      throw std::runtime_error("Unable to write " + dst.string());
-    }
-    f << src_content;
-    f.close();
+    open_write(dst) << src_content;
     return true;
   }
   return false;
