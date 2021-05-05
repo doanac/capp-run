@@ -8,9 +8,8 @@ std::map<std::string, std::string> Context::network_interfaces() const {
 
   struct ifaddrs *ifaddr;
   if (getifaddrs(&ifaddr) == -1) {
-    std::string msg = "Unable to list IP addresses ";
-    msg += errno;
-    throw std::runtime_error(msg);
+    throw std::system_error(errno, std::generic_category(),
+                            "Unable to list IP addresses");
   }
 
   for (struct ifaddrs *ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next) {

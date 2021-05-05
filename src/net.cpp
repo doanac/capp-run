@@ -40,10 +40,12 @@ private:
 LockedFile::LockedFile(const boost::filesystem::path &path) {
   fd_ = fopen(path.string().c_str(), "a+");
   if (fd_ == NULL) {
-    throw std::runtime_error("Unable to file");
+    throw std::system_error(errno, std::generic_category(),
+                            "Unable to open " + path.string());
   }
   if (flock(fileno(fd_), LOCK_EX) != 0) {
-    throw std::runtime_error("Unable to lock file");
+    throw std::system_error(errno, std::generic_category(),
+                            "Unable to lock " + path.string());
   }
 }
 
@@ -57,7 +59,8 @@ std::string LockedFile::read() const {
   char *buf = (char *)calloc(size + 1, 1);
   if (fread(buf, 1, size, fd_) != size) {
     free(buf);
-    throw std::runtime_error("Unable to read contents of file");
+    throw std::system_error(errno, std::generic_category(),
+                            "Unable to read contents file");
   }
   std::string rv(buf);
   free(buf);

@@ -109,7 +109,8 @@ static void up(const Context &ctx, const Service &svc,
     dup2(pipefd[1], STDERR_FILENO);
     dup2(pipefd[1], STDOUT_FILENO);
     if (execl(crun, crun, "run", "-f", config, name, NULL) == -1) {
-      throw std::runtime_error("Unable to execute crun");
+      throw std::system_error(errno, std::generic_category(),
+                              "Unable to execute crun");
     }
   }
 
@@ -138,9 +139,8 @@ static void up(const Context &ctx, const Service &svc,
   }
 
 cleanup:
-  perror(failure.c_str());
   umount(rootfs.c_str());
-  throw std::runtime_error(failure);
+  throw std::system_error(errno, std::generic_category(), failure);
 }
 
 void capp_up(const std::string &app_name, const std::string &svc) {
@@ -218,7 +218,10 @@ static void _remove_svc(const boost::filesystem::path &units_dir,
                         const std::string &unit) {
   boost::process::system("systemctl stop " + unit);
   boost::process::system("systemctl disable " + unit);
-  unlink((units_dir / unit).c_str());
+  if (unlink((units_dir / unit).c_str()) != 0) {
+    throw std::system_error(errno, std::generic_category(),
+                            "Unable to delete " + unit);
+  }
 }
 
 static std::string _read_file(const boost::filesystem::path &f) {
