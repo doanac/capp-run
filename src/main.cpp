@@ -31,8 +31,8 @@ int main(int argc, char **argv) {
   std::string svc;
   auto &up = *app.add_subcommand("up", "Start a compose service");
   up.add_option("service", svc, "Compose service")->required();
-  auto &pull = *app.add_subcommand("pull", "Pull container image for service");
-  pull.add_option("service", svc, "Compose service")->required();
+  auto &pull = *app.add_subcommand("pull", "Pull container image(s)");
+  pull.add_option("service", svc, "Compose service");
   auto &create = *app.add_subcommand("createRuntime", "OCI createRuntime hook");
   create.add_option("service", svc, "Compose service")->required();
   auto &teardown = *app.add_subcommand("poststop", "OCI poststop hook");

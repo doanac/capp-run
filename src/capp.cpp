@@ -189,7 +189,13 @@ void capp_pull(const std::string &app_name, const std::string &svc) {
   auto ctx = Context::Load(app_name);
   auto proj = ProjectDefinition::Load("docker-compose.json");
 
-  pull(ctx, proj.get_service(svc));
+  if (svc.size() != 0) {
+    pull(ctx, proj.get_service(svc));
+  } else {
+    for (const auto &svc : proj.services) {
+      pull(ctx, svc);
+    }
+  }
 }
 
 static std::vector<std::string> _unit_deps(const std::string &unit) {
