@@ -218,6 +218,5 @@ void ocispec_create(const std::string &app_name,
   };
   data["mounts"].emplace_back(entry);
 
-  boost::filesystem::ofstream os(out);
-  os << data;
+  open_write(out) << data;
 }
