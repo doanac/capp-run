@@ -38,6 +38,7 @@ int main(int argc, char **argv) {
   auto &teardown = *app.add_subcommand("poststop", "OCI poststop hook");
   teardown.add_option("service", svc, "Compose service")->required();
   auto &upall = *app.add_subcommand("upall", "Start all services");
+  auto &status = *app.add_subcommand("status", "Get status of services");
   auto &systemd =
       *app.add_subcommand("sync-systemd", "Ensure systemd units are in place");
 
@@ -60,6 +61,8 @@ int main(int argc, char **argv) {
       oci_poststop(app_name, svc);
     } else if (upall) {
       runall(app_name);
+    } else if (status) {
+      capp_status(app_name);
     } else if (systemd) {
       capp_sync_systemd("/etc/systemd/system", app_name);
     }

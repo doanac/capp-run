@@ -5,6 +5,8 @@
 #include <sys/mount.h>
 #include <unistd.h>
 
+#include "json.h"
+
 #include "capp.h"
 #include "context.h"
 #include "oci-hooks.h"
@@ -55,18 +57,22 @@ overlay_mount(const Context &ctx, const boost::filesystem::path &imgdir,
   return rootfs;
 }
 
-static void up(const Context &ctx, const Service &svc,
-               const std::vector<Volume> &volumes) {
-  ctx.out() << "Starting " << svc.name << "\n";
+static boost::filesystem::path get_spec(const std::string &svc_name) {
   auto spec =
-      boost::filesystem::current_path() / ".specs" / svc.name / DOCKER_ARCH;
+      boost::filesystem::current_path() / ".specs" / svc_name / DOCKER_ARCH;
   if (!boost::filesystem::is_regular_file(spec)) {
-    spec = boost::filesystem::current_path() / ".specs" / svc.name / "default";
+    spec = boost::filesystem::current_path() / ".specs" / svc_name / "default";
     if (!boost::filesystem::is_regular_file(spec)) {
       throw std::runtime_error("Could not find oci spec file for service");
     }
   }
+  return spec;
+}
 
+static void up(const Context &ctx, const Service &svc,
+               const std::vector<Volume> &volumes) {
+  ctx.out() << "Starting " << svc.name << "\n";
+  auto spec = get_spec(svc.name);
   auto hosts = ctx.var_run / "etc_hosts";
   std::ofstream outfile(hosts.string(), std::ios_base::app);
   outfile.close();
@@ -312,5 +318,49 @@ void capp_sync_systemd(const boost::filesystem::path &units_dir,
     if (rc != 0) {
       throw std::runtime_error("Unable to re-configure systemd");
     }
+  }
+}
+
+static void status(const Context &ctx, const Service &svc) {
+  ctx.out() << "Checking status of " << svc.name << "\n";
+  boost::filesystem::path p("/var/run/crun");
+  p = p / (ctx.app + "-" + svc.name);
+
+  nlohmann::json data;
+  try {
+    open_read(p / "status") >> data;
+  } catch (const std::exception &ex) {
+    ctx.out() << " not running\n";
+    return;
+  }
+
+  auto pid = data["pid"].get<int>();
+  ctx.out() << " pid(" << pid << ")";
+  boost::filesystem::path proc("/proc");
+  auto f = open_read(proc / std::to_string(pid) / "stat");
+  std::string buf;
+  // parent is 4th item
+  f >> buf;
+  f >> buf;
+  f >> buf;
+  f >> buf;
+  f = open_read(proc / buf / "environ");
+  f >> buf;
+  auto idx = buf.find("OCISPEC_SHA1");
+  idx += 13;
+  buf = buf.substr(idx, 40);
+  auto sha1 = sha1sum(get_spec(svc.name));
+  if (sha1 == buf) {
+    ctx.out() << " up-to-date\n";
+  } else {
+    ctx.out() << " needs-updating\n";
+  }
+}
+
+void capp_status(const std::string &app_name) {
+  auto ctx = Context::Load(app_name);
+  auto proj = ProjectDefinition::Load("docker-compose.json");
+  for (const auto &svc : proj.services) {
+    status(ctx, svc);
   }
 }
