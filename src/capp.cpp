@@ -146,7 +146,7 @@ cleanup:
 
 void capp_up(const std::string &app_name, const std::string &svc) {
   auto ctx = Context::Load(app_name);
-  auto proj = ProjectDefinition::Load("docker-compose.yml");
+  auto proj = ProjectDefinition::Load("docker-compose.json");
 
   for (const auto &v : proj.volumes) {
     auto p = ctx.volumes() / v.name;
@@ -187,7 +187,7 @@ static void pull(const Context &ctx, const Service &svc) {
 
 void capp_pull(const std::string &app_name, const std::string &svc) {
   auto ctx = Context::Load(app_name);
-  auto proj = ProjectDefinition::Load("docker-compose.yml");
+  auto proj = ProjectDefinition::Load("docker-compose.json");
 
   pull(ctx, proj.get_service(svc));
 }
@@ -256,7 +256,7 @@ static bool _copy_if_changed(const std::string &app_name,
 void capp_sync_systemd(const boost::filesystem::path &units_dir,
                        const std::string &app_name) {
   auto ctx = Context::Load(app_name);
-  auto proj = ProjectDefinition::Load("docker-compose.yml");
+  auto proj = ProjectDefinition::Load("docker-compose.json");
 
   bool changed = false;
 

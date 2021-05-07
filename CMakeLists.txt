@@ -24,8 +24,8 @@ find_package(PkgConfig REQUIRED)
 set(CMAKE_CXX_STANDARD 14)
 
 add_executable(capp-run src/main.cpp src/capp.cpp src/context.cpp src/net.cpp src/oci-hooks.cpp src/project.cpp src/utils.cpp)
-target_include_directories(capp-run PRIVATE ${CMAKE_SOURCE_DIR}/third-party ${CMAKE_SOURCE_DIR}/third-party/yaml-cpp/include)
-target_link_libraries(capp-run -lpthread ${Boost_LIBRARIES} yaml-cpp)
+target_include_directories(capp-run PRIVATE ${CMAKE_SOURCE_DIR}/third-party)
+target_link_libraries(capp-run -lpthread ${Boost_LIBRARIES})
 
 install(TARGETS capp-run RUNTIME DESTINATION bin)
 
@@ -38,5 +38,3 @@ add_custom_target(clang-format
 add_custom_target(clang-tidy
 	${CMAKE_SOURCE_DIR}/tools/run-clang-tidy ${CMAKE_SOURCE_DIR}/src
 )
-
-add_subdirectory(third-party/yaml-cpp)

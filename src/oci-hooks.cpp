@@ -12,7 +12,7 @@
 
 void oci_createRuntime(const std::string &app_name, const std::string &svc) {
   auto ctx = Context::Load(app_name);
-  auto proj = ProjectDefinition::Load("docker-compose.yml");
+  auto proj = ProjectDefinition::Load("docker-compose.json");
   auto s = proj.get_service(svc);
 
   std::ofstream logf((ctx.var_run / svc / "createRuntime.log").string());
@@ -37,7 +37,7 @@ void oci_createRuntime(const std::string &app_name, const std::string &svc) {
 
 void oci_poststop(const std::string &app_name, const std::string &svc) {
   auto ctx = Context::Load(app_name);
-  auto proj = ProjectDefinition::Load("docker-compose.yml");
+  auto proj = ProjectDefinition::Load("docker-compose.json");
   auto s = proj.get_service(svc);
 
   std::ofstream logf((ctx.var_run / svc / "poststop.log").string());

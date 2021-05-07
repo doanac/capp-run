@@ -109,7 +109,7 @@ static void run(const std::string &capp_exe, const std::string &app_name,
 
 static void runall(const std::string &app_name) {
   auto ctx = Context::Load(app_name);
-  auto proj = ProjectDefinition::Load("docker-compose.yml");
+  auto proj = ProjectDefinition::Load("docker-compose.json");
   auto exe = boost::filesystem::read_symlink("/proc/self/exe");
 
   size_t width = 0;
