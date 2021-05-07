@@ -80,6 +80,7 @@ static void up(const Context &ctx, const Service &svc,
 
   auto dst = ctx.var_run / svc.name / "config.json";
   boost::filesystem::create_directories(dst.parent_path());
+  auto sha1 = sha1sum(spec);
   ocispec_create(ctx.app, ctx.volumes(), svc, volumes, spec, dst, rootfs,
                  hosts);
 
@@ -106,6 +107,7 @@ static void up(const Context &ctx, const Service &svc,
   if (pid == -1) {
     goto cleanup;
   } else if (pid == 0) {
+    setenv("OCISPEC_SHA1", sha1.c_str(), 1);
     close(pipefd[0]);
     dup2(pipefd[1], STDERR_FILENO);
     dup2(pipefd[1], STDOUT_FILENO);
