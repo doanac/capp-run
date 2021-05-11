@@ -19,8 +19,10 @@ RUN apt-get update && apt-get -y install --no-install-suggests --no-install-reco
   libboost-system-dev \
   libboost-test-dev \
   libboost-thread-dev \
+  libostree-dev \
   make \
   ninja-build \
+  ostree \
   pkg-config \
   strace \
   valgrind

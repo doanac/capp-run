@@ -20,12 +20,13 @@ add_definitions('-Wall')
 set(Boost_USE_STATIC_LIBS ON)
 find_package(Boost COMPONENTS filesystem REQUIRED)
 find_package(PkgConfig REQUIRED)
+pkg_search_module(OSTree REQUIRED ostree-1)
 
 set(CMAKE_CXX_STANDARD 14)
 
 add_executable(capp-run src/main.cpp src/capp.cpp src/context.cpp src/net.cpp src/oci-hooks.cpp src/project.cpp src/utils.cpp)
-target_include_directories(capp-run PRIVATE ${CMAKE_SOURCE_DIR}/third-party)
-target_link_libraries(capp-run -lpthread ${Boost_LIBRARIES})
+target_include_directories(capp-run PRIVATE ${CMAKE_SOURCE_DIR}/third-party ${OSTree_INCLUDE_DIRS})
+target_link_libraries(capp-run -lpthread ${Boost_LIBRARIES} ${OSTree_LIBRARIES})
 
 install(TARGETS capp-run RUNTIME DESTINATION bin)
 
