@@ -96,6 +96,16 @@ ProjectDefinition ProjectDefinition::Load(const std::string &path) {
       svc.security_opts = sec_opts.get<std::vector<std::string>>();
     }
 
+    for (const auto &hostdef : item.value()["extra_hosts"]) {
+      std::vector<std::string> parts;
+      boost::split(parts, hostdef.get<std::string>(), boost::is_any_of(":"));
+      if (parts.size() != 2) {
+        throw std::runtime_error("Invalid extra_hosts entry: " +
+                                 hostdef.get<std::string>());
+      }
+      svc.extra_hosts[parts[0]] = parts[1];
+    }
+
     def.services.push_back(svc);
   }
 

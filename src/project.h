@@ -1,5 +1,6 @@
 #pragma once
 
+#include <map>
 #include <string>
 #include <vector>
 
@@ -29,6 +30,7 @@ struct Service {
   std::vector<std::string> networks;
   std::vector<Port> ports;
   std::vector<std::string> security_opts;
+  std::map<std::string, std::string> extra_hosts;
 };
 
 struct ProjectDefinition {

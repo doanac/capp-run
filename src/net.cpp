@@ -288,6 +288,10 @@ void network_join(const Context &ctx, const Service &svc, int pid) {
     _set_hosts(ctx.var_run / "etc_hosts", svc.name, inf.ip);
   }
 
+  for (const auto h : svc.extra_hosts) {
+    _set_hosts(ctx.var_run / "etc_hosts", h.first, h.second);
+  }
+
   for (const auto &p : svc.ports) {
     mk << "iptables -t nat -A OUTPUT -p " << p.protocol << " --match "
        << p.protocol << " --dport " << p.host_port << " --jump DNAT --to "
