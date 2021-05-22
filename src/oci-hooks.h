@@ -14,4 +14,5 @@ void ocispec_create(const std::string &app_name,
                     const boost::filesystem::path &spec,
                     const boost::filesystem::path &out,
                     const boost::filesystem::path &rootfs,
-                    const boost::filesystem::path &etc_hosts);
+                    const boost::filesystem::path &etc_hosts,
+                    const boost::filesystem::path &resolv_conf);

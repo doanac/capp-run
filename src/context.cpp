@@ -2,6 +2,9 @@
 
 #include <arpa/inet.h>
 #include <ifaddrs.h>
+#include <sstream>
+
+#include "utils.h"
 
 std::map<std::string, std::string> Context::network_interfaces() const {
   std::map<std::string, std::string> found;
@@ -28,4 +31,24 @@ std::map<std::string, std::string> Context::network_interfaces() const {
   }
   freeifaddrs(ifaddr);
   return found;
+}
+
+resolv_conf Context::host_dns() const {
+  std::string line;
+  std::string word;
+  resolv_conf conf;
+  auto inf = open_read("/etc/resolv.conf");
+  while (std::getline(inf, line)) {
+    std::stringstream linestream(line);
+    linestream >> word;
+    if (word == "search") {
+      while (linestream >> word) {
+        conf.search.emplace_back(word);
+      }
+    } else if (word == "nameserver") {
+      linestream >> word;
+      conf.nameservers.emplace_back(word);
+    }
+  }
+  return conf;
 }

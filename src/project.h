@@ -31,6 +31,9 @@ struct Service {
   std::vector<Port> ports;
   std::vector<std::string> security_opts;
   std::map<std::string, std::string> extra_hosts;
+  std::vector<std::string> dns_servers;
+  std::vector<std::string> dns_search;
+  std::vector<std::string> dns_opts;
 };
 
 struct ProjectDefinition {

@@ -69,13 +69,52 @@ static boost::filesystem::path get_spec(const std::string &svc_name) {
   return spec;
 }
 
+static boost::filesystem::path create_resolv_conf(const Context &ctx,
+                                                  const Service &svc) {
+  auto host_dns = ctx.host_dns();
+  auto resolv_conf = ctx.var_run / svc.name / "resolv.conf";
+  boost::filesystem::create_directories(resolv_conf.parent_path());
+  auto of = open_write(resolv_conf);
+
+  auto search = svc.dns_search;
+  if (search.size() == 0) {
+    search = host_dns.search;
+  }
+  of << "search ";
+  for (const auto &s : search) {
+    of << s << " ";
+  }
+  of << "\n";
+
+  auto servers = svc.dns_servers;
+  if (servers.size() == 0) {
+    servers = host_dns.nameservers;
+  }
+  for (const auto &s : servers) {
+    of << "nameserver " << s << "\n";
+  }
+
+  if (svc.dns_opts.size() > 0) {
+    of << "options ";
+    for (const auto &s : svc.dns_opts) {
+      of << s << " ";
+    }
+    of << "\n";
+  }
+  return resolv_conf;
+}
+
 static void up(const Context &ctx, const Service &svc,
                const std::vector<Volume> &volumes) {
   ctx.out() << "Starting " << svc.name << "\n";
   auto spec = get_spec(svc.name);
   auto hosts = ctx.var_run / "etc_hosts";
-  std::ofstream outfile(hosts.string(), std::ios_base::app);
-  outfile.close();
+  {
+    std::ofstream outfile(hosts.string(), std::ios_base::app);
+    outfile.close();
+  }
+
+  auto resolv_conf = create_resolv_conf(ctx, svc);
 
   auto imgdir = ctx.var_lib / "images" / svc.name;
   if (!boost::filesystem::is_directory(imgdir)) {
@@ -87,8 +126,8 @@ static void up(const Context &ctx, const Service &svc,
   auto dst = ctx.var_run / svc.name / "config.json";
   boost::filesystem::create_directories(dst.parent_path());
   auto sha1 = sha1sum(spec);
-  ocispec_create(ctx.app, ctx.volumes(), svc, volumes, spec, dst, rootfs,
-                 hosts);
+  ocispec_create(ctx.app, ctx.volumes(), svc, volumes, spec, dst, rootfs, hosts,
+                 resolv_conf);
 
   ctx.out() << "Execing: crun run -f " << dst << " " << ctx.app << "-"
             << svc.name << "\n";

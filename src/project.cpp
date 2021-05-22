@@ -106,6 +106,19 @@ ProjectDefinition ProjectDefinition::Load(const std::string &path) {
       svc.extra_hosts[parts[0]] = parts[1];
     }
 
+    auto dns = item.value()["dns"];
+    if (dns.is_array()) {
+      svc.dns_servers = dns.get<std::vector<std::string>>();
+    }
+    dns = item.value()["dns_search"];
+    if (dns.is_array()) {
+      svc.dns_search = dns.get<std::vector<std::string>>();
+    }
+    dns = item.value()["dns_opt"];
+    if (dns.is_array()) {
+      svc.dns_opts = dns.get<std::vector<std::string>>();
+    }
+
     def.services.push_back(svc);
   }
 

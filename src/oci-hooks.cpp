@@ -183,7 +183,8 @@ void ocispec_create(const std::string &app_name,
                     const boost::filesystem::path &spec,
                     const boost::filesystem::path &out,
                     const boost::filesystem::path &rootfs,
-                    const boost::filesystem::path &etc_hosts) {
+                    const boost::filesystem::path &etc_hosts,
+                    const boost::filesystem::path &resolv_conf) {
 
   auto exe = boost::filesystem::read_symlink("/proc/self/exe");
   nlohmann::json data;
@@ -214,6 +215,12 @@ void ocispec_create(const std::string &app_name,
   entry = {
       {"destination", "/etc/hosts"},
       {"source", etc_hosts.string()},
+      {"options", {"bind", "rprivate", "ro"}},
+  };
+  data["mounts"].emplace_back(entry);
+  entry = {
+      {"destination", "/etc/resolv.conf"},
+      {"source", resolv_conf.string()},
       {"options", {"bind", "rprivate", "ro"}},
   };
   data["mounts"].emplace_back(entry);

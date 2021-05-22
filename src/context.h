@@ -5,6 +5,11 @@
 #include <map>
 #include <string>
 
+struct resolv_conf {
+  std::vector<std::string> nameservers;
+  std::vector<std::string> search;
+};
+
 struct Context {
   std::string app;
   boost::filesystem::path var_run;
@@ -12,6 +17,7 @@ struct Context {
 
   std::ostream *out_;
 
+  resolv_conf host_dns() const;
   std::map<std::string, std::string> network_interfaces() const;
   boost::filesystem::path volumes() const { return var_lib / "volumes"; }
 
