@@ -45,11 +45,6 @@ void oci_poststop(const std::string &app_name, const std::string &svc) {
 
   std::string err;
 
-  auto rootfs = ctx.var_lib / "mounts" / svc / "rootfs";
-  if (umount(rootfs.c_str()) != 0) {
-    err = "Unable to unmount container rootfs";
-  }
-
   if (!network_destroy(ctx, s)) {
     if (!err.empty()) {
       err += "\n";

@@ -17,46 +17,6 @@
 #error Missing DOCKER_ARCH
 #endif
 
-static bool is_mounted(const std::string &path) {
-  auto file = open_read("/proc/mounts");
-  std::string line;
-  while (getline(file, line)) {
-    auto start = line.find(' ') + 1;
-    auto end = line.find(' ', start + 1);
-    auto mnt = line.substr(start, end - start);
-    if (mnt == path) {
-      return true;
-    }
-  }
-  return false;
-}
-
-static boost::filesystem::path
-overlay_mount(const Context &ctx, const boost::filesystem::path &imgdir,
-              const boost::filesystem::path &base) {
-  auto rootfs = base / "rootfs";
-  boost::filesystem::create_directories(rootfs);
-  auto upper = base / ".upper";
-  boost::filesystem::create_directories(upper);
-  auto work = base / ".work";
-  boost::filesystem::create_directories(work);
-
-  if (is_mounted(rootfs.string())) {
-    ctx.out() << "Overlay is mounted, skipping re-mount\n";
-    return rootfs;
-  }
-
-  std::string cmd = "mount -t overlay overlay -o lowerdir=";
-  cmd += imgdir.string() + ",upperdir=" + upper.string() +
-         ",workdir=" + work.string() + " " + rootfs.string();
-
-  ctx.out() << "Mounting overlay\n";
-  if (boost::process::system(cmd) != 0) {
-    throw std::runtime_error("Unable to mount overlayfs");
-  }
-  return rootfs;
-}
-
 static boost::filesystem::path get_spec(const std::string &svc_name) {
   auto spec =
       boost::filesystem::current_path() / ".specs" / svc_name / DOCKER_ARCH;
@@ -104,6 +64,30 @@ static boost::filesystem::path create_resolv_conf(const Context &ctx,
   return resolv_conf;
 }
 
+static std::string get_ostree_hash(const std::string &svc_name) {
+  auto hash =
+      boost::filesystem::current_path() / ".ostree" / svc_name / DOCKER_ARCH;
+  if (!boost::filesystem::is_regular_file(hash)) {
+    hash = boost::filesystem::current_path() / ".ostree" / svc_name / "default";
+    if (!boost::filesystem::is_regular_file(hash)) {
+      throw std::runtime_error("Could not find ostree hash for service");
+    }
+  }
+  std::string val;
+  open_read(hash) >> val;
+  return val;
+}
+
+static boost::filesystem::path create_rootfs(const Context &ctx,
+                                             const std::string &svc_name) {
+  auto rootfs = ctx.var_lib / "mounts" / svc_name;
+  boost::filesystem::remove_all(rootfs);
+  boost::filesystem::create_directories(rootfs);
+  std::string hash = get_ostree_hash(svc_name);
+  ctx.ostree->checkout(hash, rootfs);
+  return rootfs;
+}
+
 static void up(const Context &ctx, const Service &svc,
                const std::vector<Volume> &volumes) {
   ctx.out() << "Starting " << svc.name << "\n";
@@ -116,12 +100,7 @@ static void up(const Context &ctx, const Service &svc,
 
   auto resolv_conf = create_resolv_conf(ctx, svc);
 
-  auto imgdir = ctx.var_lib / "images" / svc.name;
-  if (!boost::filesystem::is_directory(imgdir)) {
-    throw std::runtime_error("Could not find image for service");
-  }
-
-  auto rootfs = overlay_mount(ctx, imgdir, ctx.var_lib / "mounts" / svc.name);
+  auto rootfs = create_rootfs(ctx, svc.name);
 
   auto dst = ctx.var_run / svc.name / "config.json";
   boost::filesystem::create_directories(dst.parent_path());
@@ -187,7 +166,6 @@ static void up(const Context &ctx, const Service &svc,
   }
 
 cleanup:
-  umount(rootfs.c_str());
   throw std::system_error(errno, std::generic_category(), failure);
 }
 
@@ -207,29 +185,10 @@ void capp_up(const std::string &app_name, const std::string &svc) {
 }
 
 static void pull(const Context &ctx, const Service &svc) {
-  ctx.out() << "Pulling " << svc.name << ": " << svc.image << "\n";
-  std::string cmd = "docker pull ";
-  boost::process::system(cmd + svc.image);
-  ctx.out() << "Extracting\n";
-  cmd = "docker create " + svc.image;
-  boost::process::ipstream out;
-  boost::process::system(cmd, boost::process::std_out > out);
-  std::string id;
-  out >> id;
-
-  auto imgdir = ctx.var_lib / "images" / svc.name;
-  boost::filesystem::create_directories(imgdir);
-
-  boost::process::pipe intermediate;
-  boost::process::child docker_export(boost::process::search_path("docker"),
-                                      "export", id,
-                                      boost::process::std_out > intermediate);
-  boost::process::child extract(boost::process::search_path("tar"), "-C",
-                                imgdir, "-xf", "-",
-                                boost::process::std_in < intermediate);
-
-  docker_export.wait();
-  extract.wait();
+  std::string hash = get_ostree_hash(svc.name);
+  ctx.out() << "Pulling " << svc.name << ": " << svc.image << " ostree(" << hash
+            << ")\n";
+  ctx.ostree->pull(hash);
 }
 
 void capp_pull(const std::string &app_name, const std::string &svc) {

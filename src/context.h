@@ -5,6 +5,8 @@
 #include <map>
 #include <string>
 
+#include "utils.h"
+
 struct resolv_conf {
   std::vector<std::string> nameservers;
   std::vector<std::string> search;
@@ -14,6 +16,7 @@ struct Context {
   std::string app;
   boost::filesystem::path var_run;
   boost::filesystem::path var_lib;
+  std::unique_ptr<OSTreeRepo> ostree;
 
   std::ostream *out_;
 
@@ -35,8 +38,16 @@ struct Context {
     if (ptr != nullptr) {
       lib = ptr;
     }
-    lib = lib / app;
 
-    return {.app = app, .var_run = run, .var_lib = lib, .out_ = &std::cout};
+    std::string server = "http://localhost:8443";
+    ptr = getenv("CAPP_OSTREE_SERVER");
+    if (ptr != nullptr) {
+      server = ptr;
+    }
+    return {.app = app,
+            .var_run = run,
+            .var_lib = lib / app,
+            .ostree = std::make_unique<OSTreeRepo>(server, lib / "ostree"),
+            .out_ = &std::cout};
   }
 };
